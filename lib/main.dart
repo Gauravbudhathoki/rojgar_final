@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:rojgar/screens/splash_screen.dart';
+import 'package:rojgar/screens/buttom_navigation_screen.dart';
+// import 'package:rojgar/screens/splash_screen.dart';
 // import 'package:rojgar_1/screens/onboarding_screen.dart';
 // import 'screens/login_screen.dart';
 
@@ -16,9 +17,13 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'Rojgar',
-      home: const SplashScreen(),
+      home: const ButtomNavigationScreen(),
 
 
     );
   }
 }
+
+
+
+

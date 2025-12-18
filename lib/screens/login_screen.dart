@@ -1,6 +1,6 @@
 
 import 'package:flutter/material.dart';
-import 'home_screen.dart';
+import 'package:rojgar/screens/buttom_navigation_screen.dart';
 import 'register_screen.dart';
 
 class LoginScreen extends StatelessWidget {
@@ -104,7 +104,7 @@ class LoginScreen extends StatelessWidget {
                   onPressed: () {
                     Navigator.pushReplacement(
                       context,
-                      MaterialPageRoute(builder: (_) => const HomeScreen()),
+                      MaterialPageRoute(builder: (_) => const ButtomNavigationScreen()),
                     );
                   },
                   child: const Text(
