@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import '../screens/login_screen.dart';
-import '../widgets/my_button.dart';
+import '../../../auth/presentation/pages/login_screen.dart';
+import '../../../../widgets/my_button.dart';
 
 class Page3 extends StatelessWidget {
   const Page3({super.key, required Null Function() onGetStarted});
@@ -51,7 +51,7 @@ class Page3 extends StatelessWidget {
                 onPressed: () {
                   Navigator.pushReplacement(
                     context,
-                    MaterialPageRoute(builder: (_) => const LoginScreen()),
+                    MaterialPageRoute(builder: (_) => LoginScreen()),
                   );
                 },
               ),

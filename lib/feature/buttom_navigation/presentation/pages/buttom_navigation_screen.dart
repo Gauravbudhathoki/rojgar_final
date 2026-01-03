@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'buttom_screens/add_screen.dart';
-import 'buttom_screens/bookmark_screen.dart';
-import 'buttom_screens/chat_screen.dart';
-import 'buttom_screens/home_screen.dart';
-import 'buttom_screens/network_screen.dart';
+import '../../../splash/presentation/pages/buttom_screens/add_screen.dart';
+import '../../../splash/presentation/pages/buttom_screens/bookmark_screen.dart';
+import '../../../splash/presentation/pages/buttom_screens/chat_screen.dart';
+import '../../../splash/presentation/pages/buttom_screens/home_screen.dart';
+import '../../../splash/presentation/pages/buttom_screens/network_screen.dart';
 
 class ButtomNavigationScreen extends StatefulWidget {
   const ButtomNavigationScreen({super.key});

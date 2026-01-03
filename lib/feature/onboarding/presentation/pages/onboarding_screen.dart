@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:smooth_page_indicator/smooth_page_indicator.dart';
 
-import '../on_boarding_pages/page1.dart';
-import '../on_boarding_pages/page2.dart';
-import '../on_boarding_pages/page3.dart';
-import '../screens/login_screen.dart';
+import 'page1.dart';
+import 'page2.dart';
+import 'page3.dart';
+import '../../../auth/presentation/pages/login_screen.dart';
 
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
@@ -43,7 +43,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
                   Navigator.pushReplacement(
                     context,
-                    MaterialPageRoute(builder: (_) => const LoginScreen()),
+                    MaterialPageRoute(builder: (_) => LoginScreen()),
                   );
                 },
               ),

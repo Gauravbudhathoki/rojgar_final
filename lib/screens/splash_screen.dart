@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:rojgar/screens/onboarding_screen.dart';
+import 'package:rojgar/feature/onboarding/presentation/pages/onboarding_screen.dart';
 import 'dart:async';
 
 // import '../on_boarding_pages/page1.dart';
