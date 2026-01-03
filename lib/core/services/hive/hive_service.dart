@@ -53,15 +53,26 @@ class HiveService {
     if (isEmailExists(model.email)) {
       throw Exception('Email already exists');
     }
-    
+    // Ensure we have a non-null key (Hive requires String or int keys)
+    final String id = model.authId ?? DateTime.now().millisecondsSinceEpoch.toString();
+    final AuthHiveModel modelWithId = (model.authId == id)
+        ? model
+        : AuthHiveModel(
+            authId: id,
+            username: model.username,
+            email: model.email,
+            password: model.password,
+            profilePicture: model.profilePicture,
+          );
+
     if (kIsWeb) {
       // Use in-memory storage for web
-      _webStorage[model.authId!] = model;
+      _webStorage[id] = modelWithId;
     } else {
       // Use Hive for mobile/desktop
-      await _authBox.put(model.authId, model);
+      await _authBox.put(id, modelWithId);
     }
-    return model;
+    return modelWithId;
   }
 
   //Login user ko lagi

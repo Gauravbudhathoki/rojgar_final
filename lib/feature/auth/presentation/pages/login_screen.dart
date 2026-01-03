@@ -101,7 +101,7 @@ class LoginScreen extends ConsumerWidget {
               /// Logo
               Center(
                 child: Image.asset(
-                  "assets/images/logo.png",
+                  "assets/images/image3.jpg",
                   height: 220,
                 ),
               ),

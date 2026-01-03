@@ -58,7 +58,7 @@ class _SplashScreenState extends State<SplashScreen>
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Image.asset(
-                'assets/images/logo.png',
+                'assets/images/rojgarlogo.png',
                 width: 150, // Optional: adjust logo size
                 height: 150,
               ),

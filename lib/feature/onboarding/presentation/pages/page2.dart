@@ -13,7 +13,7 @@ class Page2 extends StatelessWidget {
           children: [
             ClipOval(
               child: Image.asset(
-                'assets/images/job.jpg',
+                'assets/images/image2.png',
                 width: 200,
                 height: 200,
                 fit: BoxFit.cover,

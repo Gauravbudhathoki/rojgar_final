@@ -2,11 +2,23 @@ import 'package:hive/hive.dart';
 import 'package:rojgar/feature/auth/domain/entities/entities/auth_entity.dart';
 import 'package:rojgar/core/constants/hive_table_constant.dart';
 
+part 'auth_hive_model.g.dart';
+
+@HiveType(typeId: HiveTableConstant.authTypeId)
 class AuthHiveModel {
+  @HiveField(0)
   final String? authId;
+
+  @HiveField(1)
   final String username;
+
+  @HiveField(2)
   final String email;
+
+  @HiveField(3)
   final String? password;
+
+  @HiveField(4)
   final String? profilePicture;
 
   AuthHiveModel({
@@ -36,41 +48,8 @@ class AuthHiveModel {
       profilePicture: profilePicture,
     );
   }
-}
-
-class AuthHiveModelAdapter extends TypeAdapter<AuthHiveModel> {
-  @override
-  final int typeId = HiveTableConstant.authTypeId;
-
-  @override
-  AuthHiveModel read(BinaryReader reader) {
-    final numOfFields = reader.readByte();
-    final fields = <int, dynamic>{};
-    for (var i = 0; i < numOfFields; i++) {
-      fields[reader.readByte()] = reader.read();
-    }
-    return AuthHiveModel(
-      authId: fields[0] as String?,
-      username: fields[1] as String,
-      email: fields[2] as String,
-      password: fields[3] as String?,
-      profilePicture: fields[4] as String?,
-    );
-  }
-
-  @override
-  void write(BinaryWriter writer, AuthHiveModel obj) {
-    writer
-      ..writeByte(5)
-      ..writeByte(0)
-      ..write(obj.authId)
-      ..writeByte(1)
-      ..write(obj.username)
-      ..writeByte(2)
-      ..write(obj.email)
-      ..writeByte(3)
-      ..write(obj.password)
-      ..writeByte(4)
-      ..write(obj.profilePicture);
+    //To Entity list
+  static List<AuthEntity> toEntityList(List<AuthHiveModel> models) {
+    return models.map((model) => model.toEntity()).toList();
   }
 }

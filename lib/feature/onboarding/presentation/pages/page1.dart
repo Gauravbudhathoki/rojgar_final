@@ -13,7 +13,7 @@ class Page1 extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Image.asset(
-            'assets/images/logo.png', // Rojgar logo
+            'assets/images/image1.png', 
             width: 150,
             height: 150,
           ),
