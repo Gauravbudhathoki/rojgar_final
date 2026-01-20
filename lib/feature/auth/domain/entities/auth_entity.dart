@@ -12,7 +12,7 @@ class AuthEntity extends Equatable {
     required this.username,
     required this.email, 
     this.password ,
-    this.profilePicture
+    this.profilePicture,
   });
 
   @override

@@ -16,10 +16,10 @@ class LoginScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final authState = ref.watch(authViewModelProvider);
 
-    /// Listen auth state
+    /// ✅ Auth listener (same logic as friend)
     ref.listen<AuthState>(authViewModelProvider, (previous, next) {
       if (next.status == AuthStatus.authenticated) {
-        showMySnackBar(context: context, message: "Login successful");
+        SnackbarUtils.showSuccess(context, "Login successful");
 
         Future.delayed(const Duration(seconds: 1), () {
           if (context.mounted) {
@@ -34,24 +34,20 @@ class LoginScreen extends ConsumerWidget {
       }
 
       if (next.status == AuthStatus.error) {
-        showMySnackBar(
-          context: context,
-          message: next.errorMessage ?? "Login failed",
-          color: Colors.red,
+        SnackbarUtils.showError(
+          context,
+          next.errorMessage ?? "Login failed",
         );
       }
     });
 
+    /// ✅ Login handler (friend style)
     void handleLogin() {
       final email = _emailController.text.trim();
       final password = _passwordController.text.trim();
 
       if (email.isEmpty || password.isEmpty) {
-        showMySnackBar(
-          context: context,
-          message: "Please fill all fields",
-          color: Colors.red,
-        );
+        SnackbarUtils.showError(context, "Please fill all fields");
         return;
       }
 
@@ -74,10 +70,7 @@ class LoginScreen extends ConsumerWidget {
               RichText(
                 text: const TextSpan(
                   text: "Let’s ",
-                  style: TextStyle(
-                    fontSize: 28,
-                    color: Colors.black87,
-                  ),
+                  style: TextStyle(fontSize: 28, color: Colors.black87),
                   children: [
                     TextSpan(
                       text: "Sign In",
@@ -142,12 +135,9 @@ class LoginScreen extends ConsumerWidget {
                       authState.status == AuthStatus.loading ? null : handleLogin,
                   child: Text(
                     authState.status == AuthStatus.loading
-                        ? "Logging in..."
-                        : "Login",
-                    style: const TextStyle(
-                      fontSize: 16,
-                      color: Colors.white,
-                    ),
+                        ? "LOGGING IN..."
+                        : "LOGIN",
+                    style: const TextStyle(fontSize: 16, color: Colors.white),
                   ),
                 ),
               ),
@@ -221,7 +211,7 @@ class LoginScreen extends ConsumerWidget {
     );
   }
 
-  /// Input Field Widget
+  /// Input Field
   Widget _inputField({
     required TextEditingController controller,
     required String hint,

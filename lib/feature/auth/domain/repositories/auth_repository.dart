@@ -1,6 +1,6 @@
 import 'package:dartz/dartz.dart';
 import 'package:rojgar/core/error/failures.dart';
-import 'package:rojgar/feature/auth/domain/entities/entities/auth_entity.dart';
+import 'package:rojgar/feature/auth/domain/entities/auth_entity.dart';
 
 
 abstract interface class IAuthRepository {

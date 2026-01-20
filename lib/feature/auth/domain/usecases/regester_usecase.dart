@@ -4,8 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:rojgar/core/error/failures.dart';
 import 'package:rojgar/core/usecase/app.usecase.dart';
 import 'package:rojgar/feature/auth/data/repositories/auth_repository.dart';
-import 'package:rojgar/feature/auth/domain/entities/entities/auth_entity.dart';
-import 'package:rojgar/feature/auth/domain/entities/repositories/auth_repository.dart';
+import 'package:rojgar/feature/auth/domain/entities/auth_entity.dart';
+import 'package:rojgar/feature/auth/domain/repositories/auth_repository.dart';
 
 
 class RegisterUsecaseParams extends Equatable {

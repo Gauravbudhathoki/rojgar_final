@@ -1,10 +1,10 @@
 import 'package:hive/hive.dart';
-import 'package:rojgar/feature/auth/domain/entities/entities/auth_entity.dart';
+import 'package:rojgar/feature/auth/domain/entities/auth_entity.dart';
 import 'package:rojgar/core/constants/hive_table_constant.dart';
 
 part 'auth_hive_model.g.dart';
 
-@HiveType(typeId: HiveTableConstant.authTypeId)
+@HiveType(typeId: HiveTableConstant.authTableTypeId)
 class AuthHiveModel {
   @HiveField(0)
   final String? authId;

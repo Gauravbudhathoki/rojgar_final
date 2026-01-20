@@ -1,5 +1,5 @@
 import 'package:equatable/equatable.dart';
-import 'package:rojgar/feature/auth/domain/entities/entities/auth_entity.dart';
+import 'package:rojgar/feature/auth/domain/entities/auth_entity.dart';
 
 
 enum AuthStatus { initial, loading, authenticated, unauthenticated,registered,  error }

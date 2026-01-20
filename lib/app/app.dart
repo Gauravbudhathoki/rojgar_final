@@ -1,23 +1,19 @@
 import 'package:flutter/material.dart';
+import 'package:rojgar/feature/auth/presentation/pages/login_screen.dart';
 import 'package:rojgar/screens/splash_screen.dart';
-//import 'package:rojgar/screens/splash_screen.dart';
-//import 'package:rojgar_1/screens/onboarding_screen.dart';
-// import 'screens/login_screen.dart';
 
-
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+class App extends StatelessWidget {
+  const App({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'Rojgar',
-      home: const SplashScreen(),
+      initialRoute: '/',
+      routes: {
+        '/': (context) => const SplashScreen(),
+        '/login': (context) => LoginScreen(),
+      },
     );
   }
 }
-
-
-
-
