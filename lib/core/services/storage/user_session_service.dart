@@ -16,21 +16,20 @@ class UserSessionService {
 
   static const String _keyIsLoggedIn = "is_logged_in";
   static const String _keyAuthId = "auth_id";
-  static const String _keyUserName = "username";
   static const String _keyEmail = "email";
+  static const String _keyUserName = "username";
   static const String _keyProfileImage = "profile_image";
 
   Future<void> saveUserSession({
     required String authId,
-    required String username,
     required String email,
+    required String username,
     String? profileImage,
   }) async {
     await _prefs.setBool(_keyIsLoggedIn, true);
-    await _prefs.setString(_keyUserName, username);
     await _prefs.setString(_keyAuthId, authId);
     await _prefs.setString(_keyEmail, email);
-    
+    await _prefs.setString(_keyUserName, username);
 
     if (profileImage != null) {
       await _prefs.setString(_keyProfileImage, profileImage);
@@ -41,8 +40,8 @@ class UserSessionService {
   Future<void> clearUserSession() async {
     await _prefs.remove(_keyIsLoggedIn);
     await _prefs.remove(_keyAuthId);
-    await _prefs.remove(_keyUserName);
     await _prefs.remove(_keyEmail);
+    await _prefs.remove(_keyUserName);
     await _prefs.remove(_keyProfileImage);
   }
 
@@ -58,7 +57,7 @@ class UserSessionService {
     return _prefs.getString(_keyEmail);
   }
 
-  String? getUserName() {
+  String? getFullName() {
     return _prefs.getString(_keyUserName);
   }
 

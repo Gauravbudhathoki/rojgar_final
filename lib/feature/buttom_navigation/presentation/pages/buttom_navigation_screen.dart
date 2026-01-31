@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
-import '../../../splash/presentation/pages/buttom_screens/add_screen.dart';
+//import '../../../splash/presentation/pages/buttom_screens/add_screen.dart';
 import '../../../splash/presentation/pages/buttom_screens/bookmark_screen.dart';
 import '../../../splash/presentation/pages/buttom_screens/chat_screen.dart';
 import '../../../splash/presentation/pages/buttom_screens/home_screen.dart';
 import '../../../splash/presentation/pages/buttom_screens/network_screen.dart';
+import '../../../splash/presentation/pages/buttom_screens/profile_screen.dart';
 
 class ButtomNavigationScreen extends StatefulWidget {
   const ButtomNavigationScreen({super.key});
@@ -18,9 +19,9 @@ class _ButtomNavigationScreenState extends State<ButtomNavigationScreen> {
   final List<Widget> _screens = const [
     HomeScreen(),
     NetworkScreen(),
-    AddScreen(),
     ChatScreen(),
     BookmarkScreen(),
+    ProfileScreen(),
   ];
 
   @override
@@ -47,16 +48,16 @@ class _ButtomNavigationScreenState extends State<ButtomNavigationScreen> {
             label: 'Network',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.add_box),
-            label: 'Add',
-          ),
-          BottomNavigationBarItem(
             icon: Icon(Icons.chat),
             label: 'Chat',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.bookmark),
             label: 'Bookmark',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.person),
+            label: 'Profile',
           ),
         ],
       ),

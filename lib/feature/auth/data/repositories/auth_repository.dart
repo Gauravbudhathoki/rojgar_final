@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:dartz/dartz.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -10,6 +12,7 @@ import 'package:rojgar/feature/auth/data/models/auth_api_model.dart';
 import 'package:rojgar/feature/auth/data/models/auth_hive_model.dart';
 import 'package:rojgar/feature/auth/domain/entities/auth_entity.dart';
 import 'package:rojgar/feature/auth/domain/repositories/auth_repository.dart';
+
 final authRepositoryProvider = Provider<IAuthRepository>((ref) {
   return AuthRepository(
     authDatasource: ref.read(authLocalDatasourceProvider),
@@ -123,6 +126,47 @@ class AuthRepository implements IAuthRepository {
       return Left(LocalDatabaseFailure(message: 'Failed to logout user'));
     } catch (e) {
       return Left(LocalDatabaseFailure(message: e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, AuthEntity>> uploadProfilePicture(
+    File imageFile,
+    String userId,
+  ) async {
+    try {
+      final profilePictureUrl = await _authRemoteDataSource
+          .uploadProfilePicture(imageFile, userId);
+
+      final updatedUser = await _authRemoteDataSource.updateProfilePicture(
+        userId,
+        profilePictureUrl,
+      );
+
+      final localUser = await _authDatasource.getCurrentUser();
+      if (localUser != null) {
+        final updatedLocalUser = AuthHiveModel(
+          authId: localUser.authId,
+          username: localUser.username,
+          email: localUser.email,
+          password: localUser.password,
+          profilePicture: profilePictureUrl,
+        );
+        await _authDatasource.updateUser(updatedLocalUser);
+      }
+
+      return Right(updatedUser.toEntity());
+    } on DioException catch (e) {
+      final data = e.response?.data;
+      final message = data is Map<String, dynamic>
+          ? data['message'] ?? 'Failed to upload profile picture'
+          : data?.toString() ?? 'Failed to upload profile picture';
+
+      return Left(
+        ApiFailure(message: message, statusCode: e.response?.statusCode),
+      );
+    } catch (e) {
+      return Left(ApiFailure(message: e.toString()));
     }
   }
 }
