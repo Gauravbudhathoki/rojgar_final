@@ -7,7 +7,6 @@ import 'package:rojgar/core/api/api_endpoints.dart';
 import 'package:rojgar/core/services/storage/token_service.dart';
 import 'package:rojgar/core/services/storage/user_session_service.dart';
 import 'package:rojgar/feature/auth/data/datasources/auth_datasource.dart';
-
 import 'package:rojgar/feature/auth/data/models/auth_api_model.dart';
 import 'package:rojgar/feature/auth/data/models/auth_hive_model.dart';
 
@@ -28,9 +27,9 @@ class AuthRemoteDatasource implements IAuthRemoteDataSource {
     required ApiClient apiClient,
     required UserSessionService userSessionService,
     required TokenService tokenService,
-  }) : _apiClient = apiClient,
-       _userSessionService = userSessionService,
-       _tokenService = tokenService;
+  })  : _apiClient = apiClient,
+        _userSessionService = userSessionService,
+        _tokenService = tokenService;
 
   @override
   Future<AuthApiModel?> getUserById(AuthHiveModel auth) async {
@@ -38,18 +37,20 @@ class AuthRemoteDatasource implements IAuthRemoteDataSource {
       final response = await _apiClient.get(
         '${ApiEndpoints.user}/${auth.authId}',
       );
-      final data = response.data;
 
-      if (data is Map<String, dynamic> &&
-          data['user'] is Map<String, dynamic>) {
-        return AuthApiModel.fromJson(data['user']);
+      // Backend: { success: true, data: { _id, username, email, ... } }
+      final body = response.data;
+      if (body is Map<String, dynamic>) {
+        final inner = body['data'];
+        if (inner is Map<String, dynamic>) {
+          return AuthApiModel.fromJson(inner);
+        }
       }
       return null;
     } on DioException catch (e) {
       final data = e.response?.data;
-      final message = data is Map<String, dynamic>
-          ? data['message']
-          : data?.toString();
+      final message =
+          data is Map<String, dynamic> ? data['message'] : data?.toString();
       throw Exception(message ?? 'Failed to fetch user');
     }
   }
@@ -62,31 +63,33 @@ class AuthRemoteDatasource implements IAuthRemoteDataSource {
         data: {'email': email, 'password': password},
       );
 
-      final data = response.data;
+      // Backend: { success: true, data: { token: "...", user: { ... } } }
+      final body = response.data;
+      if (body is Map<String, dynamic>) {
+        final inner = body['data'];
+        if (inner is Map<String, dynamic> &&
+            inner['user'] is Map<String, dynamic>) {
+          final user = AuthApiModel.fromJson(inner['user']);
+          final token = inner['token'];
 
-      if (data is Map<String, dynamic> &&
-          data['user'] is Map<String, dynamic>) {
-        final user = AuthApiModel.fromJson(data['user']);
+          await _userSessionService.saveUserSession(
+            authId: user.id!,
+            email: user.email,
+            username: user.username,
+            profileImage: user.profilePicture,
+          );
 
-        await _userSessionService.saveUserSession(
-          authId: user.id!,
-          email: user.email,
-          username: user.username,
-          profileImage: user.profilePicture,
-        );
+          await _tokenService.saveToken(token);
 
-        final token = data['token'];
-        await _tokenService.saveToken(token);
-
-        return user;
+          return user;
+        }
       }
 
       throw Exception('Invalid login response');
     } on DioException catch (e) {
       final data = e.response?.data;
-      final message = data is Map<String, dynamic>
-          ? data['message']
-          : data?.toString();
+      final message =
+          data is Map<String, dynamic> ? data['message'] : data?.toString();
       throw Exception(message ?? 'Login failed');
     }
   }
@@ -94,10 +97,11 @@ class AuthRemoteDatasource implements IAuthRemoteDataSource {
   @override
   Future<AuthApiModel> register(AuthApiModel user) async {
     try {
+      // Backend: { success: true, data: { _id, username, email, ... } }
       await _apiClient.post(
         ApiEndpoints.register,
         data: {
-          'userName': user.username,
+          'username': user.username,
           'email': user.email,
           'password': user.password,
         },
@@ -105,9 +109,8 @@ class AuthRemoteDatasource implements IAuthRemoteDataSource {
       return user;
     } on DioException catch (e) {
       final data = e.response?.data;
-      final message = data is Map<String, dynamic>
-          ? data['message']
-          : data?.toString();
+      final message =
+          data is Map<String, dynamic> ? data['message'] : data?.toString();
       throw Exception(message ?? 'Registration failed');
     }
   }
@@ -128,17 +131,25 @@ class AuthRemoteDatasource implements IAuthRemoteDataSource {
         data: formData,
       );
 
-      final data = response.data;
-      if (data is Map<String, dynamic> && data['profilePicture'] != null) {
-        return data['profilePicture'];
+      // Backend: { success: true, data: { profilePicture: "..." } }
+      final body = response.data;
+      if (body is Map<String, dynamic>) {
+        final inner = body['data'];
+        if (inner is Map<String, dynamic> &&
+            inner['profilePicture'] != null) {
+          return inner['profilePicture'];
+        }
+        // fallback: profilePicture directly on body
+        if (body['profilePicture'] != null) {
+          return body['profilePicture'];
+        }
       }
 
       throw Exception('Failed to get profile picture URL');
     } on DioException catch (e) {
       final data = e.response?.data;
-      final message = data is Map<String, dynamic>
-          ? data['message']
-          : data?.toString();
+      final message =
+          data is Map<String, dynamic> ? data['message'] : data?.toString();
       throw Exception(message ?? 'Failed to upload profile picture');
     }
   }
@@ -154,27 +165,32 @@ class AuthRemoteDatasource implements IAuthRemoteDataSource {
         data: {'profilePicture': profilePictureUrl},
       );
 
-      final data = response.data;
-      if (data is Map<String, dynamic> &&
-          data['user'] is Map<String, dynamic>) {
-        final updatedUser = AuthApiModel.fromJson(data['user']);
+      // Backend: { success: true, data: { user: { ... } } }
+      final body = response.data;
+      if (body is Map<String, dynamic>) {
+        final inner = body['data'];
+        if (inner is Map<String, dynamic>) {
+          final userMap = inner['user'] ?? inner;
+          if (userMap is Map<String, dynamic>) {
+            final updatedUser = AuthApiModel.fromJson(userMap);
 
-        await _userSessionService.saveUserSession(
-          authId: updatedUser.id!,
-          email: updatedUser.email,
-          username: updatedUser.username,
-          profileImage: updatedUser.profilePicture,
-        );
+            await _userSessionService.saveUserSession(
+              authId: updatedUser.id!,
+              email: updatedUser.email,
+              username: updatedUser.username,
+              profileImage: updatedUser.profilePicture,
+            );
 
-        return updatedUser;
+            return updatedUser;
+          }
+        }
       }
 
       throw Exception('Failed to update profile picture');
     } on DioException catch (e) {
       final data = e.response?.data;
-      final message = data is Map<String, dynamic>
-          ? data['message']
-          : data?.toString();
+      final message =
+          data is Map<String, dynamic> ? data['message'] : data?.toString();
       throw Exception(message ?? 'Failed to update profile picture');
     }
   }

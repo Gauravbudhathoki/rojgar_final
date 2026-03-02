@@ -5,6 +5,7 @@ import 'package:rojgar/feature/auth/domain/usecases/login_usecase.dart';
 import 'package:rojgar/feature/auth/domain/usecases/regester_usecase.dart';
 import 'package:rojgar/feature/auth/domain/usecases/upload_profilepicture_usecase.dart';
 import 'package:rojgar/feature/auth/presentation/state/auth_state.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 final authViewModelProvider = NotifierProvider<AuthViewModel, AuthState>(
   () => AuthViewModel(),
@@ -21,7 +22,8 @@ class AuthViewModel extends Notifier<AuthState> {
     _registerUsecase = ref.read(registerUsecaseProvider);
     _loginUsecase = ref.read(loginUsecaseProvider);
     _getCurrentUserUsecase = ref.read(getCurrentUserUsecaseProvider);
-    _uploadProfilePictureUsecase = ref.read(uploadProfilePictureUsecaseProvider);
+    _uploadProfilePictureUsecase =
+        ref.read(uploadProfilePictureUsecaseProvider);
     return AuthState();
   }
 
@@ -123,5 +125,14 @@ class AuthViewModel extends Notifier<AuthState> {
     );
   }
 
-  Future<void> logout() async {}
+  Future<void> logout() async {
+    state = state.copyWith(status: AuthStatus.loading);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.clear();
+      state = const AuthState(status: AuthStatus.unauthenticated);
+    } catch (_) {
+      state = const AuthState(status: AuthStatus.unauthenticated);
+    }
+  }
 }
