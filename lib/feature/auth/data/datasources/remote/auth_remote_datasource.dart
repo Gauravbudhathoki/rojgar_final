@@ -37,8 +37,6 @@ class AuthRemoteDatasource implements IAuthRemoteDataSource {
       final response = await _apiClient.get(
         '${ApiEndpoints.user}/${auth.authId}',
       );
-
-      // Backend: { success: true, data: { _id, username, email, ... } }
       final body = response.data;
       if (body is Map<String, dynamic>) {
         final inner = body['data'];
@@ -62,8 +60,6 @@ class AuthRemoteDatasource implements IAuthRemoteDataSource {
         ApiEndpoints.login,
         data: {'email': email, 'password': password},
       );
-
-      // Backend: { success: true, data: { token: "...", user: { ... } } }
       final body = response.data;
       if (body is Map<String, dynamic>) {
         final inner = body['data'];
@@ -71,20 +67,16 @@ class AuthRemoteDatasource implements IAuthRemoteDataSource {
             inner['user'] is Map<String, dynamic>) {
           final user = AuthApiModel.fromJson(inner['user']);
           final token = inner['token'];
-
           await _userSessionService.saveUserSession(
             authId: user.id!,
             email: user.email,
             username: user.username,
             profileImage: user.profilePicture,
           );
-
           await _tokenService.saveToken(token);
-
           return user;
         }
       }
-
       throw Exception('Invalid login response');
     } on DioException catch (e) {
       final data = e.response?.data;
@@ -97,7 +89,6 @@ class AuthRemoteDatasource implements IAuthRemoteDataSource {
   @override
   Future<AuthApiModel> register(AuthApiModel user) async {
     try {
-      // Backend: { success: true, data: { _id, username, email, ... } }
       await _apiClient.post(
         ApiEndpoints.register,
         data: {
@@ -127,24 +118,23 @@ class AuthRemoteDatasource implements IAuthRemoteDataSource {
       });
 
       final response = await _apiClient.post(
-        '${ApiEndpoints.uploadProfilePicture}/$userId',
+        ApiEndpoints.uploadProfilePicture,
         data: formData,
       );
 
-      // Backend: { success: true, data: { profilePicture: "..." } }
       final body = response.data;
       if (body is Map<String, dynamic>) {
         final inner = body['data'];
-        if (inner is Map<String, dynamic> &&
-            inner['profilePicture'] != null) {
-          return inner['profilePicture'];
-        }
-        // fallback: profilePicture directly on body
-        if (body['profilePicture'] != null) {
-          return body['profilePicture'];
+        if (inner is Map<String, dynamic>) {
+          final filename = inner['profilePicture'];
+          if (filename != null) {
+            final fullUrl = filename.toString().startsWith('http')
+                ? filename.toString()
+                : ApiEndpoints.profilePicture(filename.toString());
+            return fullUrl;
+          }
         }
       }
-
       throw Exception('Failed to get profile picture URL');
     } on DioException catch (e) {
       final data = e.response?.data;
@@ -161,11 +151,9 @@ class AuthRemoteDatasource implements IAuthRemoteDataSource {
   ) async {
     try {
       final response = await _apiClient.patch(
-        '${ApiEndpoints.user}/$userId',
+        '/profile/update',
         data: {'profilePicture': profilePictureUrl},
       );
-
-      // Backend: { success: true, data: { user: { ... } } }
       final body = response.data;
       if (body is Map<String, dynamic>) {
         final inner = body['data'];
@@ -173,19 +161,16 @@ class AuthRemoteDatasource implements IAuthRemoteDataSource {
           final userMap = inner['user'] ?? inner;
           if (userMap is Map<String, dynamic>) {
             final updatedUser = AuthApiModel.fromJson(userMap);
-
             await _userSessionService.saveUserSession(
               authId: updatedUser.id!,
               email: updatedUser.email,
               username: updatedUser.username,
               profileImage: updatedUser.profilePicture,
             );
-
             return updatedUser;
           }
         }
       }
-
       throw Exception('Failed to update profile picture');
     } on DioException catch (e) {
       final data = e.response?.data;

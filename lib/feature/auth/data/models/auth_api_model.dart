@@ -1,3 +1,4 @@
+import 'package:rojgar/core/api/api_endpoints.dart';
 import 'package:rojgar/feature/auth/domain/entities/auth_entity.dart';
 
 class AuthApiModel {
@@ -21,11 +22,9 @@ class AuthApiModel {
       "email": email,
       "profilePicture": profilePicture,
     };
-
     if (password != null) {
       data["password"] = password;
     }
-
     return data;
   }
 
@@ -39,11 +38,19 @@ class AuthApiModel {
   }
 
   AuthEntity toEntity() {
+    String? fullProfilePictureUrl;
+    if (profilePicture != null && profilePicture!.isNotEmpty) {
+      if (profilePicture!.startsWith('http')) {
+        fullProfilePictureUrl = profilePicture;
+      } else {
+        fullProfilePictureUrl = ApiEndpoints.profilePicture(profilePicture!);
+      }
+    }
     return AuthEntity(
       authId: id,
       username: username,
       email: email,
-      profilePicture: profilePicture,
+      profilePicture: fullProfilePictureUrl,
     );
   }
 

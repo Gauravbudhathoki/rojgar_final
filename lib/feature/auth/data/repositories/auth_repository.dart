@@ -30,9 +30,9 @@ class AuthRepository implements IAuthRepository {
     required IAuthLocalDataSource authDatasource,
     required IAuthRemoteDataSource authRemoteDataSource,
     required NetworkInfo networkInfo,
-  }) : _authDatasource = authDatasource,
-       _authRemoteDataSource = authRemoteDataSource,
-       _networkInfo = networkInfo;
+  })  : _authDatasource = authDatasource,
+        _authRemoteDataSource = authRemoteDataSource,
+        _networkInfo = networkInfo;
 
   @override
   Future<Either<Failure, AuthEntity>> getCurrentUser() async {
@@ -64,7 +64,6 @@ class AuthRepository implements IAuthRepository {
         final message = data is Map<String, dynamic>
             ? data['message'] ?? 'Login failed'
             : data?.toString() ?? 'Login failed';
-
         return Left(
           ApiFailure(message: message, statusCode: e.response?.statusCode),
         );
@@ -98,7 +97,6 @@ class AuthRepository implements IAuthRepository {
         final message = data is Map<String, dynamic>
             ? data['message'] ?? 'Registration failed'
             : data?.toString() ?? 'Registration failed';
-
         return Left(
           ApiFailure(message: message, statusCode: e.response?.statusCode),
         );
@@ -135,12 +133,9 @@ class AuthRepository implements IAuthRepository {
     String userId,
   ) async {
     try {
-      final profilePictureUrl = await _authRemoteDataSource
-          .uploadProfilePicture(imageFile, userId);
-
-      final updatedUser = await _authRemoteDataSource.updateProfilePicture(
+      final profilePictureUrl = await _authRemoteDataSource.uploadProfilePicture(
+        imageFile,
         userId,
-        profilePictureUrl,
       );
 
       final localUser = await _authDatasource.getCurrentUser();
@@ -153,15 +148,15 @@ class AuthRepository implements IAuthRepository {
           profilePicture: profilePictureUrl,
         );
         await _authDatasource.updateUser(updatedLocalUser);
+        return Right(updatedLocalUser.toEntity());
       }
 
-      return Right(updatedUser.toEntity());
+      return Left(LocalDatabaseFailure(message: 'Failed to find current user'));
     } on DioException catch (e) {
       final data = e.response?.data;
       final message = data is Map<String, dynamic>
           ? data['message'] ?? 'Failed to upload profile picture'
           : data?.toString() ?? 'Failed to upload profile picture';
-
       return Left(
         ApiFailure(message: message, statusCode: e.response?.statusCode),
       );

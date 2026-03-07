@@ -1,4 +1,5 @@
 import 'package:hive/hive.dart';
+import 'package:rojgar/core/api/api_endpoints.dart';
 import 'package:rojgar/feature/auth/domain/entities/auth_entity.dart';
 import 'package:rojgar/core/constants/hive_table_constant.dart';
 
@@ -40,15 +41,24 @@ class AuthHiveModel {
   }
 
   AuthEntity toEntity() {
+    String? fullProfilePictureUrl;
+    if (profilePicture != null && profilePicture!.isNotEmpty) {
+      if (profilePicture!.startsWith('http')) {
+        fullProfilePictureUrl = profilePicture;
+      } else {
+        fullProfilePictureUrl = ApiEndpoints.profilePicture(profilePicture!);
+      }
+    }
+
     return AuthEntity(
       authId: authId,
       username: username,
       email: email,
       password: password,
-      profilePicture: profilePicture,
+      profilePicture: fullProfilePictureUrl,
     );
   }
-    //To Entity list
+
   static List<AuthEntity> toEntityList(List<AuthHiveModel> models) {
     return models.map((model) => model.toEntity()).toList();
   }

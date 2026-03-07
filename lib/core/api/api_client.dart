@@ -2,10 +2,9 @@ import 'package:dio/dio.dart';
 import 'package:dio_smart_retry/dio_smart_retry.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-
 import 'package:pretty_dio_logger/pretty_dio_logger.dart';
 import 'package:rojgar/core/api/api_endpoints.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 final apiClientProvider = Provider<ApiClient>((ref) {
   return ApiClient();
@@ -20,8 +19,8 @@ class ApiClient {
         baseUrl: ApiEndpoints.baseUrl,
         connectTimeout: ApiEndpoints.connectionTimeout,
         receiveTimeout: ApiEndpoints.receiveTimeout,
+       
         headers: {
-          'Content-Type': 'application/json',
           'Accept': 'application/json',
         },
       ),
@@ -67,7 +66,8 @@ class ApiClient {
     Map<String, dynamic>? queryParameters,
     Options? options,
   }) async {
-    return _dio.get(path, queryParameters: queryParameters, options: options);
+    return _dio.get(path,
+        queryParameters: queryParameters, options: options);
   }
 
   Future<Response> post(
@@ -76,11 +76,20 @@ class ApiClient {
     Map<String, dynamic>? queryParameters,
     Options? options,
   }) async {
+    
+    final resolvedOptions = data is FormData
+        ? (options ?? Options()).copyWith(
+            contentType: 'multipart/form-data',
+          )
+        : (options ?? Options()).copyWith(
+            contentType: 'application/json',
+          );
+
     return _dio.post(
       path,
       data: data,
       queryParameters: queryParameters,
-      options: options,
+      options: resolvedOptions,
     );
   }
 
@@ -118,10 +127,14 @@ class ApiClient {
     Options? options,
     ProgressCallback? onSendProgress,
   }) async {
+    // ✅ Always multipart for file uploads
+    final resolvedOptions = (options ?? Options()).copyWith(
+      contentType: 'multipart/form-data',
+    );
     return _dio.post(
       path,
       data: formData,
-      options: options,
+      options: resolvedOptions,
       onSendProgress: onSendProgress,
     );
   }
@@ -142,7 +155,6 @@ class ApiClient {
 }
 
 class _AuthInterceptor extends Interceptor {
-  final _storage = const FlutterSecureStorage();
   static const String _tokenKey = 'auth_token';
 
   @override
@@ -155,10 +167,19 @@ class _AuthInterceptor extends Interceptor {
         options.path == ApiEndpoints.register;
 
     if (!isAuthEndpoint) {
-      final token = await _storage.read(key: _tokenKey);
+      
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString(_tokenKey);
+
       if (token != null) {
         options.headers['Authorization'] = 'Bearer $token';
       }
+    }
+
+    
+    if (!options.headers.containsKey('Content-Type') &&
+        options.data is! FormData) {
+      options.headers['Content-Type'] = 'application/json';
     }
 
     handler.next(options);
@@ -167,7 +188,10 @@ class _AuthInterceptor extends Interceptor {
   @override
   void onError(DioException err, ErrorInterceptorHandler handler) {
     if (err.response?.statusCode == 401) {
-      _storage.delete(key: _tokenKey);
+
+      SharedPreferences.getInstance().then((prefs) {
+        prefs.remove(_tokenKey);
+      });
     }
     handler.next(err);
   }

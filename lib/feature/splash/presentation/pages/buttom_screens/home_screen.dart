@@ -59,7 +59,7 @@ class JobModel {
       companyLogoUrl: json['companyLogoUrl'] != null
           ? (json['companyLogoUrl'].toString().startsWith('http')
               ? json['companyLogoUrl'].toString()
-              : '${ApiEndpoints.mediaServerUrl}/${json['companyLogoUrl']}')
+              : '${ApiEndpoints.mediaServerUrl}/company_logos/${json['companyLogoUrl']}')
           : null,
       createdAt: json['createdAt'] != null
           ? DateTime.tryParse(json['createdAt'].toString()) ?? DateTime.now()
@@ -119,14 +119,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       final response = await apiClient.get(ApiEndpoints.jobs);
       final body = response.data;
 
+      // ✅ Fixed: backend returns { success: true, data: [...], total, page }
+      // The jobs list is directly in body["data"], not nested further
       if (body is Map<String, dynamic>) {
-        final outerData = body["data"];
         List<dynamic> rawList = [];
-        if (outerData is List) {
-          rawList = outerData;
-        } else if (outerData is Map) {
-          rawList = (outerData["data"] as List?) ?? [];
+
+        final data = body['data'];
+        if (data is List) {
+          // ✅ Direct list: { data: [...] }
+          rawList = data;
+        } else if (data is Map && data['data'] is List) {
+          // Nested fallback: { data: { data: [...] } }
+          rawList = data['data'] as List;
         }
+
         setState(() {
           _jobs = rawList
               .whereType<Map<String, dynamic>>()

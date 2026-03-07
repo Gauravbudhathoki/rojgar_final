@@ -1,45 +1,10 @@
+import 'dart:io';
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
-
-void main() => runApp(const RojgarApp());
-
-class RojgarApp extends StatelessWidget {
-  const RojgarApp({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Rojgar',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        useMaterial3: true,
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF2563EB),
-          brightness: Brightness.light,
-        ),
-        fontFamily: 'Roboto',
-        inputDecorationTheme: InputDecorationTheme(
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(10),
-            borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(10),
-            borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(10),
-            borderSide: const BorderSide(color: Color(0xFF2563EB), width: 1.5),
-          ),
-          filled: true,
-          fillColor: Colors.white,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-          hintStyle: const TextStyle(color: Color(0xFFADB5BD), fontSize: 14),
-        ),
-      ),
-      home: const PostJobScreen(),
-    );
-  }
-}
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:rojgar/core/api/api_client.dart';
+import 'package:rojgar/core/api/api_endpoints.dart';
 
 const List<String> kLocations = [
   'Remote',
@@ -81,14 +46,14 @@ const List<String> kCategories = [
   'Other',
 ];
 
-class PostJobScreen extends StatefulWidget {
+class PostJobScreen extends ConsumerStatefulWidget {
   const PostJobScreen({super.key});
 
   @override
-  State<PostJobScreen> createState() => _PostJobScreenState();
+  ConsumerState<PostJobScreen> createState() => _PostJobScreenState();
 }
 
-class _PostJobScreenState extends State<PostJobScreen> {
+class _PostJobScreenState extends ConsumerState<PostJobScreen> {
   final _formKey = GlobalKey<FormState>();
 
   final _jobTitleCtrl = TextEditingController();
@@ -109,6 +74,10 @@ class _PostJobScreenState extends State<PostJobScreen> {
   final List<String> _benefits = [];
 
   bool _isSubmitting = false;
+
+  // ✅ Company logo file picked from gallery/camera
+  File? _logoFile;
+  final ImagePicker _picker = ImagePicker();
 
   @override
   void dispose() {
@@ -143,9 +112,51 @@ class _PostJobScreenState extends State<PostJobScreen> {
     }
   }
 
-  void _removeRequirement(int index) => setState(() => _requirements.removeAt(index));
+  void _removeRequirement(int index) =>
+      setState(() => _requirements.removeAt(index));
 
-  void _removeBenefit(int index) => setState(() => _benefits.removeAt(index));
+  void _removeBenefit(int index) =>
+      setState(() => _benefits.removeAt(index));
+
+  Future<void> _pickLogo() async {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (_) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.camera_alt),
+                title: const Text('Take Photo'),
+                onTap: () async {
+                  Navigator.pop(context);
+                  final XFile? img = await _picker.pickImage(
+                      source: ImageSource.camera, imageQuality: 80);
+                  if (img != null) setState(() => _logoFile = File(img.path));
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.photo_library),
+                title: const Text('Choose from Gallery'),
+                onTap: () async {
+                  Navigator.pop(context);
+                  final XFile? img = await _picker.pickImage(
+                      source: ImageSource.gallery, imageQuality: 80);
+                  if (img != null) setState(() => _logoFile = File(img.path));
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
@@ -159,20 +170,86 @@ class _PostJobScreenState extends State<PostJobScreen> {
     }
 
     setState(() => _isSubmitting = true);
-    await Future.delayed(const Duration(seconds: 2));
-    setState(() => _isSubmitting = false);
 
-    _showSnack('Job posted successfully!');
-    if (mounted) Navigator.of(context).pop();
+    try {
+      final apiClient = ref.read(apiClientProvider);
+
+      // ✅ Build multipart form data to support logo file upload
+      final Map<String, dynamic> fields = {
+        'jobTitle': _jobTitleCtrl.text.trim(),
+        'companyName': _companyNameCtrl.text.trim(),
+        'location': _selectedLocation!,
+        'jobType': _selectedJobType!,
+        'experienceLevel': _selectedExperience!,
+        'category': _selectedCategory!,
+        'description': _descriptionCtrl.text.trim(),
+        if (_minSalaryCtrl.text.isNotEmpty) 'minSalary': _minSalaryCtrl.text.trim(),
+        if (_maxSalaryCtrl.text.isNotEmpty) 'maxSalary': _maxSalaryCtrl.text.trim(),
+        if (_logoUrlCtrl.text.isNotEmpty) 'companyLogoUrl': _logoUrlCtrl.text.trim(),
+      };
+
+      // Add requirements and benefits as repeated fields
+      for (final req in _requirements) {
+        fields['requirements'] = _requirements;
+        break;
+      }
+      for (final ben in _benefits) {
+        fields['benefits'] = _benefits;
+        break;
+      }
+
+      FormData formData;
+
+      if (_logoFile != null) {
+        // ✅ Upload with logo file
+        final fileName = _logoFile!.path.split('/').last;
+        formData = FormData.fromMap({
+          ...fields,
+          'companyLogo': await MultipartFile.fromFile(
+            _logoFile!.path,
+            filename: fileName,
+          ),
+        });
+      } else {
+        formData = FormData.fromMap(fields);
+      }
+
+      // ✅ Actually call the API — this was missing before!
+      final response = await apiClient.post(
+        ApiEndpoints.jobs,
+        data: formData,
+      );
+
+      final body = response.data;
+      final success = body is Map ? body['success'] == true : false;
+
+      if (success) {
+        _showSnack('Job posted successfully!');
+        if (mounted) Navigator.of(context).pop(true); // ✅ return true so caller can refresh
+      } else {
+        final msg = body is Map ? body['message'] ?? 'Failed to post job' : 'Failed to post job';
+        _showSnack(msg, isError: true);
+      }
+    } on DioException catch (e) {
+      final data = e.response?.data;
+      final msg = data is Map ? data['message'] ?? 'Failed to post job' : 'Failed to post job';
+      _showSnack(msg, isError: true);
+    } catch (e) {
+      _showSnack('Something went wrong: $e', isError: true);
+    } finally {
+      if (mounted) setState(() => _isSubmitting = false);
+    }
   }
 
   void _showSnack(String msg, {bool isError = false}) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(msg),
-        backgroundColor: isError ? Colors.red.shade700 : const Color(0xFF2563EB),
+        backgroundColor:
+            isError ? Colors.red.shade700 : const Color(0xFF2563EB),
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        shape:
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       ),
     );
   }
@@ -191,7 +268,8 @@ class _PostJobScreenState extends State<PostJobScreen> {
               child: Form(
                 key: _formKey,
                 child: ListView(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 16, vertical: 24),
                   children: [
                     _SectionCard(
                       title: 'Basic Information',
@@ -204,7 +282,8 @@ class _PostJobScreenState extends State<PostJobScreen> {
                             decoration: const InputDecoration(
                               hintText: 'e.g., Senior Full-Stack Developer',
                             ),
-                            validator: (v) => (v == null || v.isEmpty) ? 'Required' : null,
+                            validator: (v) =>
+                                (v == null || v.isEmpty) ? 'Required' : null,
                           ),
                         ),
                         const SizedBox(height: 16),
@@ -216,25 +295,87 @@ class _PostJobScreenState extends State<PostJobScreen> {
                                 required: true,
                                 child: TextFormField(
                                   controller: _companyNameCtrl,
-                                  decoration: const InputDecoration(hintText: 'Your Company'),
-                                  validator: (v) => (v == null || v.isEmpty) ? 'Required' : null,
+                                  decoration: const InputDecoration(
+                                      hintText: 'Your Company'),
+                                  validator: (v) =>
+                                      (v == null || v.isEmpty)
+                                          ? 'Required'
+                                          : null,
                                 ),
                               ),
                             ),
                             const SizedBox(width: 12),
                             Expanded(
                               child: _buildField(
-                                label: 'Company Logo URL',
+                                label: 'Company Logo URL (optional)',
                                 child: TextFormField(
                                   controller: _logoUrlCtrl,
                                   decoration: const InputDecoration(
-                                    hintText: 'https://example.com/logo.png',
+                                    hintText:
+                                        'https://example.com/logo.png',
                                   ),
                                   keyboardType: TextInputType.url,
                                 ),
                               ),
                             ),
                           ],
+                        ),
+                        const SizedBox(height: 16),
+                        // ✅ Logo file picker
+                        _buildField(
+                          label: 'Company Logo (upload image)',
+                          child: GestureDetector(
+                            onTap: _pickLogo,
+                            child: Container(
+                              height: 56,
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(
+                                    color: const Color(0xFFE2E8F0)),
+                              ),
+                              child: Row(
+                                children: [
+                                  const SizedBox(width: 12),
+                                  if (_logoFile != null) ...[
+                                    ClipRRect(
+                                      borderRadius:
+                                          BorderRadius.circular(6),
+                                      child: Image.file(_logoFile!,
+                                          width: 36,
+                                          height: 36,
+                                          fit: BoxFit.cover),
+                                    ),
+                                    const SizedBox(width: 10),
+                                    Expanded(
+                                      child: Text(
+                                        _logoFile!.path.split('/').last,
+                                        style: const TextStyle(
+                                            fontSize: 13,
+                                            color: Color(0xFF374151)),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                    IconButton(
+                                      icon: const Icon(Icons.close,
+                                          size: 18,
+                                          color: Color(0xFF94A3B8)),
+                                      onPressed: () =>
+                                          setState(() => _logoFile = null),
+                                    ),
+                                  ] else ...[
+                                    const Icon(Icons.upload_outlined,
+                                        color: Color(0xFF94A3B8), size: 20),
+                                    const SizedBox(width: 8),
+                                    const Text('Tap to upload logo',
+                                        style: TextStyle(
+                                            color: Color(0xFFADB5BD),
+                                            fontSize: 14)),
+                                  ],
+                                ],
+                              ),
+                            ),
+                          ),
                         ),
                       ],
                     ),
@@ -249,7 +390,8 @@ class _PostJobScreenState extends State<PostJobScreen> {
                             hint: 'Select a location',
                             value: _selectedLocation,
                             items: kLocations,
-                            onChanged: (v) => setState(() => _selectedLocation = v),
+                            onChanged: (v) =>
+                                setState(() => _selectedLocation = v),
                           ),
                         ),
                         const SizedBox(height: 16),
@@ -260,7 +402,8 @@ class _PostJobScreenState extends State<PostJobScreen> {
                                 label: 'Min Salary (NPR)',
                                 child: TextFormField(
                                   controller: _minSalaryCtrl,
-                                  decoration: const InputDecoration(hintText: 'e.g., 30000'),
+                                  decoration: const InputDecoration(
+                                      hintText: 'e.g., 30000'),
                                   keyboardType: TextInputType.number,
                                 ),
                               ),
@@ -271,7 +414,8 @@ class _PostJobScreenState extends State<PostJobScreen> {
                                 label: 'Max Salary (NPR)',
                                 child: TextFormField(
                                   controller: _maxSalaryCtrl,
-                                  decoration: const InputDecoration(hintText: 'e.g., 80000'),
+                                  decoration: const InputDecoration(
+                                      hintText: 'e.g., 80000'),
                                   keyboardType: TextInputType.number,
                                 ),
                               ),
@@ -294,7 +438,8 @@ class _PostJobScreenState extends State<PostJobScreen> {
                                   hint: 'Select job type',
                                   value: _selectedJobType,
                                   items: kJobTypes,
-                                  onChanged: (v) => setState(() => _selectedJobType = v),
+                                  onChanged: (v) =>
+                                      setState(() => _selectedJobType = v),
                                 ),
                               ),
                             ),
@@ -307,7 +452,8 @@ class _PostJobScreenState extends State<PostJobScreen> {
                                   hint: 'Select experience level',
                                   value: _selectedExperience,
                                   items: kExperienceLevels,
-                                  onChanged: (v) => setState(() => _selectedExperience = v),
+                                  onChanged: (v) =>
+                                      setState(() => _selectedExperience = v),
                                 ),
                               ),
                             ),
@@ -321,7 +467,8 @@ class _PostJobScreenState extends State<PostJobScreen> {
                             hint: 'Select category',
                             value: _selectedCategory,
                             items: kCategories,
-                            onChanged: (v) => setState(() => _selectedCategory = v),
+                            onChanged: (v) =>
+                                setState(() => _selectedCategory = v),
                           ),
                         ),
                       ],
@@ -341,7 +488,8 @@ class _PostJobScreenState extends State<PostJobScreen> {
                                   'Provide a detailed description of the job role, responsibilities, and what makes this opportunity unique...',
                               alignLabelWithHint: true,
                             ),
-                            validator: (v) => (v == null || v.isEmpty) ? 'Required' : null,
+                            validator: (v) =>
+                                (v == null || v.isEmpty) ? 'Required' : null,
                           ),
                         ),
                       ],
@@ -365,7 +513,8 @@ class _PostJobScreenState extends State<PostJobScreen> {
                       children: [
                         _buildTagInput(
                           controller: _benInputCtrl,
-                          hint: 'e.g., Health Insurance, Remote Work, Stock Options',
+                          hint:
+                              'e.g., Health Insurance, Remote Work, Stock Options',
                           onAdd: _addBenefit,
                           tags: _benefits,
                           onRemove: _removeBenefit,
@@ -396,12 +545,12 @@ class _PostJobScreenState extends State<PostJobScreen> {
             child: const Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.arrow_back, size: 18, color: Color(0xFF64748B)),
+                Icon(Icons.arrow_back,
+                    size: 18, color: Color(0xFF64748B)),
                 SizedBox(width: 4),
-                Text(
-                  'Go Back',
-                  style: TextStyle(fontSize: 14, color: Color(0xFF64748B)),
-                ),
+                Text('Go Back',
+                    style: TextStyle(
+                        fontSize: 14, color: Color(0xFF64748B))),
               ],
             ),
           ),
@@ -465,7 +614,9 @@ class _PostJobScreenState extends State<PostJobScreen> {
   }) {
     return DropdownButtonFormField<String>(
       value: value,
-      hint: Text(hint, style: const TextStyle(color: Color(0xFFADB5BD), fontSize: 14)),
+      hint: Text(hint,
+          style: const TextStyle(
+              color: Color(0xFFADB5BD), fontSize: 14)),
       decoration: InputDecoration(
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
@@ -477,20 +628,24 @@ class _PostJobScreenState extends State<PostJobScreen> {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
-          borderSide: const BorderSide(color: Color(0xFF2563EB), width: 1.5),
+          borderSide:
+              const BorderSide(color: Color(0xFF2563EB), width: 1.5),
         ),
         filled: true,
         fillColor: Colors.white,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
       ),
       items: items
           .map((e) => DropdownMenuItem(
                 value: e,
-                child: Text(e, style: const TextStyle(fontSize: 14)),
+                child:
+                    Text(e, style: const TextStyle(fontSize: 14)),
               ))
           .toList(),
       onChanged: onChanged,
-      icon: const Icon(Icons.keyboard_arrow_down_rounded, color: Color(0xFF94A3B8)),
+      icon: const Icon(Icons.keyboard_arrow_down_rounded,
+          color: Color(0xFF94A3B8)),
       isExpanded: true,
     );
   }
@@ -537,14 +692,17 @@ class _PostJobScreenState extends State<PostJobScreen> {
             runSpacing: 6,
             children: tags.asMap().entries.map((entry) {
               return Chip(
-                label: Text(entry.value, style: const TextStyle(fontSize: 13)),
+                label: Text(entry.value,
+                    style: const TextStyle(fontSize: 13)),
                 deleteIcon: const Icon(Icons.close, size: 15),
                 onDeleted: () => onRemove(entry.key),
                 backgroundColor: const Color(0xFFEFF6FF),
                 side: const BorderSide(color: Color(0xFFBFDBFE)),
-                labelStyle: const TextStyle(color: Color(0xFF1D4ED8)),
+                labelStyle:
+                    const TextStyle(color: Color(0xFF1D4ED8)),
                 deleteIconColor: const Color(0xFF1D4ED8),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20)),
               );
             }).toList(),
           ),
@@ -560,12 +718,16 @@ class _PostJobScreenState extends State<PostJobScreen> {
         OutlinedButton(
           onPressed: () => Navigator.of(context).maybePop(),
           style: OutlinedButton.styleFrom(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            padding: const EdgeInsets.symmetric(
+                horizontal: 24, vertical: 14),
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10)),
             side: const BorderSide(color: Color(0xFFE2E8F0)),
             foregroundColor: const Color(0xFF374151),
           ),
-          child: const Text('Cancel', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
+          child: const Text('Cancel',
+              style: TextStyle(
+                  fontWeight: FontWeight.w600, fontSize: 15)),
         ),
         const SizedBox(width: 12),
         ElevatedButton(
@@ -573,17 +735,22 @@ class _PostJobScreenState extends State<PostJobScreen> {
           style: ElevatedButton.styleFrom(
             backgroundColor: const Color(0xFF2563EB),
             foregroundColor: Colors.white,
-            padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            padding: const EdgeInsets.symmetric(
+                horizontal: 28, vertical: 14),
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10)),
             elevation: 0,
           ),
           child: _isSubmitting
               ? const SizedBox(
                   width: 20,
                   height: 20,
-                  child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                  child: CircularProgressIndicator(
+                      color: Colors.white, strokeWidth: 2),
                 )
-              : const Text('Post Job', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
+              : const Text('Post Job',
+                  style: TextStyle(
+                      fontWeight: FontWeight.w700, fontSize: 15)),
         ),
       ],
     );

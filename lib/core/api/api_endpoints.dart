@@ -22,8 +22,8 @@ class ApiEndpoints {
   static const Duration connectionTimeout = Duration(seconds: 30);
   static const Duration receiveTimeout = Duration(seconds: 30);
 
-  static const String user = '/users';
-  static String userById(String id) => '/users/$id';
+  static const String user = '/profile';
+  static String userById(String id) => '/profile/$id';
 
   static const String register = '/auth/register';
   static const String login = '/auth/login';
@@ -33,7 +33,8 @@ class ApiEndpoints {
   static String jobById(String id) => '/jobs/$id';
   static const String myJobs = '/jobs/my';
 
-  static const String uploadProfilePicture = '/users/upload-profile-picture';
+  
+  static const String uploadProfilePicture = '/profile/upload';
   static String profilePicture(String filename) =>
       '$mediaServerUrl/profile_pictures/$filename';
 }
